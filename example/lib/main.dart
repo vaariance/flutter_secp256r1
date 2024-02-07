@@ -1,11 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:agent_dart/identity/p256.dart';
 import 'package:convert/convert.dart';
 import 'package:flutter/material.dart';
-import 'package:secp256r1/secp256r1.dart';
-import 'package:tuple/tuple.dart';
+import 'package:variance_flutter_secp256r1/secp256r1.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,7 +21,8 @@ class _MyAppState extends State<MyApp> {
   String _signed = 'Unknown';
   bool? _verified;
   String? _sharedSecret, _decrypted;
-  Tuple2<Uint8List, Uint8List>? _encrypted;
+  SecretBox? _encrypted;
+  String? _encryptedText;
 
   final _payloadTEC = TextEditingController(text: 'Hello world');
   final _othersPublicKeyTEC = TextEditingController();
@@ -45,7 +44,7 @@ class _MyAppState extends State<MyApp> {
             SelectableText('sign: $_signed\n'),
             SelectableText('verify: $_verified\n'),
             SelectableText('sharedSecret: $_sharedSecret\n'),
-            SelectableText('encrypted: $_encrypted\n'),
+            SelectableText('encrypted: $_encryptedText\n'),
             SelectableText('decrypted: $_decrypted\n'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
@@ -116,7 +115,10 @@ class _MyAppState extends State<MyApp> {
                     hex.decode(_sharedSecret!),
                   ),
                   message: Uint8List.fromList(utf8.encode('Hello AstroX')),
-                ).then((r) => setState(() => _encrypted = r));
+                ).then((r) {
+                  setState(() => _encrypted = r);
+                  setState(() => _encryptedText = r.toString());
+                });
               },
               child: const Text('Encrypt (FFI)'),
             ),
@@ -126,8 +128,7 @@ class _MyAppState extends State<MyApp> {
                   sharedSecret: Uint8List.fromList(
                     hex.decode(_sharedSecret!),
                   ),
-                  iv: _encrypted!.item1,
-                  cipher: _encrypted!.item2,
+                  encrypted: _encrypted!,
                 ).then((r) => setState(() => _decrypted = utf8.decode(r)));
               },
               child: const Text('Decrypt (FFI)'),

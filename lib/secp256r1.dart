@@ -1,13 +1,21 @@
+library;
+
 import 'dart:io' show Platform;
 import 'dart:typed_data';
 
-import 'package:agent_dart/agent/crypto/index.dart';
-import 'package:agent_dart/bridge/ffi/ffi.dart';
-import 'package:agent_dart/identity/der.dart';
-import 'package:agent_dart/identity/p256.dart';
-import 'package:tuple/tuple.dart';
+import 'package:cryptography/cryptography.dart';
+import 'package:cryptography_flutter/cryptography_flutter.dart';
+
+import 'src/der.dart';
+import 'src/p256.dart';
 
 import 'p256_platform_interface.dart';
+import 'src/random.dart';
+
+export 'src/der.dart';
+export 'src/p256.dart';
+
+export 'package:cryptography/cryptography.dart' show SecretBox, SecretKey;
 
 class SecureP256 {
   const SecureP256._();
@@ -66,7 +74,7 @@ class SecureP256 {
   }
 
   /// Return [iv, cipher].
-  static Future<Tuple2<Uint8List, Uint8List>> encrypt({
+  static Future<SecretBox> encrypt({
     required Uint8List sharedSecret,
     required Uint8List message,
   }) async {
@@ -74,32 +82,21 @@ class SecureP256 {
     assert(message.isNotEmpty);
     final sharedX = sharedSecret.sublist(0, 32);
     final iv = Uint8List.fromList(randomAsU8a(12));
-    final cipher = await AgentDartFFI.impl.aes256GcmEncrypt(
-      req: AesEncryptReq(
-        key: sharedX,
-        iv: Uint8List.fromList(iv),
-        message: message,
-      ),
-    );
-    return Tuple2(iv, cipher);
+    final encrypted = await FlutterAesGcm.with256bits()
+        .encrypt(message, secretKey: SecretKey(sharedX), nonce: iv);
+    return encrypted;
   }
 
   static Future<Uint8List> decrypt({
     required Uint8List sharedSecret,
-    required Uint8List iv,
-    required Uint8List cipher,
+    required SecretBox encrypted,
   }) async {
     assert(sharedSecret.isNotEmpty);
-    assert(iv.lengthInBytes == 12);
-    assert(cipher.isNotEmpty);
+    assert(Uint8List.fromList(encrypted.nonce).lengthInBytes == 12);
+    assert(encrypted.cipherText.isNotEmpty);
     final sharedX = sharedSecret.sublist(0, 32);
-    final decryptedMessage256 = await AgentDartFFI.impl.aes256GcmDecrypt(
-      req: AesDecryptReq(
-        key: sharedX,
-        iv: iv,
-        cipherText: cipher,
-      ),
-    );
-    return decryptedMessage256;
+    final decryptedMessage256 = await FlutterAesGcm.with256bits()
+        .decrypt(encrypted, secretKey: SecretKey(sharedX));
+    return Uint8List.fromList(decryptedMessage256);
   }
 }
