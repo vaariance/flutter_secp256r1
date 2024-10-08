@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:agent_dart/identity/p256.dart';
+import 'package:agent_dart/agent_dart.dart' show P256PublicKey;
 import 'package:convert/convert.dart';
 import 'package:flutter/material.dart';
 import 'package:secp256r1/secp256r1.dart';
